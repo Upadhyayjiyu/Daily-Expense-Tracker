@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - Daily Expense Tracker{% endblock %}
+
+{% block content %}
+<div class="fade-in-up">
+    <h1 style="font-size: 2.5rem; margin-bottom: var(--spacing-xl);">📊 Expense Analytics</h1>
+
+    <!-- Key Insights -->
+    <div class="grid grid-3" style="margin-bottom: var(--spacing-2xl);">
+        <div class="summary-card">
+            <div class="summary-card-icon">📈</div>
+            <div class="summary-card-title">Highest Spending Day</div>
+            {% if highest_day %}
+            <div class="summary-card-value" style="font-size: 1.5rem;">{{ highest_day.day }}</div>
+            <div class="summary-card-subtitle">{{ highest_day.date }} - ₹{{ "%.2f"|format(highest_day.total) }}</div>
+            {% else %}
+            <div class="summary-card-subtitle">No data available</div>
+            {% endif %}
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-card-icon">🔮</div>
+            <div class="summary-card-title">Forecasted Next Month</div>
+            <div class="summary-card-value">₹{{ "%.2f"|format(forecast) }}</div>
+            <div class="summary-card-subtitle">Based on recent trends</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-card-icon">💹</div>
+            <div class="summary-card-title">Savings Rate</div>
+            <div class="summary-card-value">{{ "%.1f"|format(salary_comparison.savings_percentage) }}%</div>
+            <div class="summary-card-subtitle">Of monthly salary</div>
+        </div>
+    </div>
+
+    <!-- Category Distribution & Monthly Trends -->
+    <div class="grid grid-2" style="margin-bottom: var(--spacing-2xl);">
+        <div class="glass-card">
+            <h3 style="margin-bottom: var(--spacing-lg);">🥧 Category Distribution</h3>
+            <div class="chart-container">
+                <canvas id="categoryPieChart"></canvas>
+            </div>
+        </div>
+
+        <div class="glass-card">
+            <h3 style="margin-bottom: var(--spacing-lg);">📊 Monthly Spending Trend</h3>
+            <div class="chart-container">
+                <canvas id="monthlyBarChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekly & Daily Trends -->
+    <div class="grid grid-2" style="margin-bottom: var(--spacing-2xl);">
+        <div class="glass-card">
+            <h3 style="margin-bottom: var(--spacing-lg);">📈 Weekly Trends</h3>
+            <div class="chart-container">
+                <canvas id="weeklyLineChart"></canvas>
+            </div>
+        </div>
+
+        <div class="glass-card">
+            <h3 style="margin-bottom: var(--spacing-lg);">📉 Daily Spending (Last 30 Days)</h3>
+            <div class="chart-container">
+                <canvas id="dailyLineChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Categories & Salary Comparison -->
+    <div class="grid grid-2" style="margin-bottom: var(--spacing-2xl);">
+        <div class="glass-card">
+            <h3 style="margin-bottom: var(--spacing-lg);">🏆 Top 5 Spending Categories</h3>
+            <div class="chart-container">
+                <canvas id="topCategoriesChart"></canvas>
+            </div>
+        </div>
+
+        <div class="glass-card">
+            <h3 style="margin-bottom: var(--spacing-lg);">💰 Salary vs Expenses</h3>
+            <div class="chart-container">
+                <canvas id="salaryComparisonChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Data from backend
+    const categoryData = {{ category_wise| safe }};
+    const monthlyData = {{ monthly_trends| safe }};
+    const weeklyData = {{ weekly_trends| safe }};
+    const dailyData = {{ daily_trends| safe }};
+    const topCategories = {{ top_categories| tojson }};
+    const salaryComparison = {{ salary_comparison| tojson }};
+
+    // Chart.js default config
+    Chart.defaults.color = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim();
+    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+
+    // Category Pie Chart
+    new Chart(document.getElementById('categoryPieChart'), {
+        type: 'doughnut',
+        data: {
+            labels: categoryData.map(c => c.icon + ' ' + c.name),
+            datasets: [{
+                data: categoryData.map(c => c.total),
+                backgroundColor: categoryData.map(c => c.color),
+                borderWidth: 2,
+                borderColor: '#1a1a2e'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        padding: 15,
+                        font: { size: 12 }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return context.label + ': ₹' + context.parsed.toFixed(2) + ' (' + categoryData[context.dataIndex].percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Monthly Bar Chart
+    new Chart(document.getElementById('monthlyBarChart'), {
+        type: 'bar',
+        data: {
+            labels: monthlyData.map(m => m.month),
+            datasets: [{
+                label: 'Monthly Expenses',
+                data: monthlyData.map(m => m.total),
+                backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                borderColor: '#667eea',
+                borderWidth: 2,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => '₹' + context.parsed.y.toFixed(2)
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (value) => '₹' + value
+                    }
+                }
+            }
+        }
+    });
+
+    // Weekly Line Chart
+    new Chart(document.getElementById('weeklyLineChart'), {
+        type: 'line',
+        data: {
+            labels: weeklyData.map(w => w.week),
+            datasets: [{
+                label: 'Weekly Spending',
+                data: weeklyData.map(w => w.total),
+                borderColor: '#764ba2',
+                backgroundColor: 'rgba(118, 75, 162, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (value) => '₹' + value
+                    }
+                }
+            }
+        }
+    });
+
+    // Daily Line Chart
+    new Chart(document.getElementById('dailyLineChart'), {
+        type: 'line',
+        data: {
+            labels: dailyData.map(d => d.date),
+            datasets: [{
+                label: 'Daily Expenses',
+                data: dailyData.map(d => d.total),
+                borderColor: '#f5576c',
+                backgroundColor: 'rgba(245, 87, 108, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (value) => '₹' + value
+                    }
+                }
+            }
+        }
+    });
+
+    // Top Categories Horizontal Bar
+    new Chart(document.getElementById('topCategoriesChart'), {
+        type: 'bar',
+        data: {
+            labels: topCategories.map(c => c.icon + ' ' + c.name),
+            datasets: [{
+                label: 'Amount Spent',
+                data: topCategories.map(c => c.total),
+                backgroundColor: topCategories.map(c => c.color),
+                borderColor: topCategories.map(c => c.color),
+                borderWidth: 2,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (value) => '₹' + value
+                    }
+                }
+            }
+        }
+    });
+
+    // Salary Comparison Chart
+    new Chart(document.getElementById('salaryComparisonChart'), {
+        type: 'bar',
+        data: {
+            labels: ['Salary', 'Expenses', 'Savings'],
+            datasets: [{
+                data: [salaryComparison.salary, salaryComparison.expenses, Math.max(0, salaryComparison.savings)],
+                backgroundColor: [
+                    'rgba(76, 201, 240, 0.6)',
+                    'rgba(245, 87, 108, 0.6)',
+                    'rgba(0, 242, 254, 0.6)'
+                ],
+                borderColor: ['#4cc9f0', '#f5576c', '#00f2fe'],
+                borderWidth: 2,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (value) => '₹' + value
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

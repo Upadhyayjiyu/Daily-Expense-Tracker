@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Daily Expense Tracker{% endblock %}
+
+{% block content %}
+<div class="fade-in-up">
+    <!-- Welcome Section -->
+    <div style="margin-bottom: var(--spacing-2xl);">
+        <h1 style="font-size: 2.5rem; margin-bottom: var(--spacing-sm);">
+            Welcome back, {{ user.username }}! 👋
+        </h1>
+        <p style="color: var(--text-secondary); font-size: 1.125rem;">
+            Here's your financial overview
+        </p>
+    </div>
+
+    <!-- Budget Alerts -->
+    {% if budget_alerts %}
+    <div class="alert alert-warning" style="margin-bottom: var(--spacing-xl);">
+        <h3 style="margin-bottom: var(--spacing-sm);">⚠️ Budget Alerts</h3>
+        {% for alert in budget_alerts %}
+        <div style="margin-bottom: var(--spacing-xs);">
+            <strong>{{ alert.category }}:</strong>
+            {{ alert.percentage }}% used (₹{{ alert.spent }} / ₹{{ alert.budget }})
+            {% if alert.exceeded %}<span class="badge badge-danger">EXCEEDED</span>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Summary Cards -->
+    <div class="grid grid-4" style="margin-bottom: var(--spacing-2xl);">
+        <!-- Salary Card -->
+        <div class="summary-card fade-in-up">
+            <div class="summary-card-icon">💵</div>
+            <div class="summary-card-title">Monthly Salary</div>
+            <div class="summary-card-value">₹{{ "%.2f"|format(salary_comparison.salary) }}</div>
+            <div class="summary-card-subtitle">Your income</div>
+        </div>
+
+        <!-- Expenses Card -->
+        <div class="summary-card fade-in-up" style="animation-delay: 0.1s;">
+            <div class="summary-card-icon">💸</div>
+            <div class="summary-card-title">Total Expenses</div>
+            <div class="summary-card-value"
+                style="background: var(--secondary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                ₹{{ "%.2f"|format(salary_comparison.expenses) }}
+            </div>
+            <div class="summary-card-subtitle">This month</div>
+        </div>
+
+        <!-- Savings Card -->
+        <div class="summary-card fade-in-up" style="animation-delay: 0.2s;">
+            <div class="summary-card-icon">{% if salary_comparison.savings >= 0 %}💰{% else %}📉{% endif %}</div>
+            <div class="summary-card-title">Savings</div>
+            <div class="summary-card-value"
+                style="background: {% if salary_comparison.savings >= 0 %}var(--success-gradient){% else %}var(--secondary-gradient){% endif %}; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                ₹{{ "%.2f"|format(salary_comparison.savings) }}
+            </div>
+            <div class="summary-card-subtitle">
+                {{ "%.1f"|format(salary_comparison.savings_percentage) }}% of salary
+            </div>
+        </div>
+
+        <!-- Status Card -->
+        <div class="summary-card fade-in-up" style="animation-delay: 0.3s;">
+            <div class="summary-card-icon">
+                {% if salary_comparison.overspending %}⚠️{% else %}✅{% endif %}
+            </div>
+            <div class="summary-card-title">Status</div>
+            <div class="summary-card-value" style="font-size: 1.25rem;">
+                {% if salary_comparison.overspending %}
+                <span class="badge badge-danger">Overspending</span>
+                {% else %}
+                <span class="badge badge-success">On Track</span>
+                {% endif %}
+            </div>
+            <div class="summary-card-subtitle">Financial health</div>
+        </div>
+    </div>
+
+    <!-- Quick Actions & Top Categories -->
+    <div class="grid grid-2" style="margin-bottom: var(--spacing-2xl);">
+        <!-- Quick Add Expense -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: var(--spacing-lg);">➕ Quick Add Expense</h2>
+            <form id="quickExpenseForm">
+                <div class="form-group">
+                    <label class="form-label">Amount (₹)</label>
+                    <input type="number" class="form-control" id="quickAmount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select class="form-control form-select" id="quickCategory" required>
+                        <option value="">Select category...</option>
+                        <!-- Categories will be populated via JavaScript -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-control" id="quickDescription">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Add Expense</button>
+            </form>
+        </div>
+
+        <!-- Top Spending Categories -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: var(--spacing-lg);">🏆 Top Spending Categories</h2>
+            {% for category in top_categories %}
+            <div
+                style="margin-bottom: var(--spacing-md); padding: var(--spacing-md); background: var(--glass-bg); border-radius: var(--radius-sm);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="font-size: 1.5rem;">{{ category.icon }}</span>
+                        <strong style="margin-left: var(--spacing-sm);">{{ category.name }}</strong>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 1.25rem; font-weight: 600;">₹{{ "%.2f"|format(category.total) }}</div>
+                        <div style="color: var(--text-secondary); font-size: 0.875rem;">{{ category.percentage }}%</div>
+                    </div>
+                </div>
+                <div
+                    style="margin-top: var(--spacing-sm); background: rgba(102, 126, 234, 0.2); border-radius: var(--radius-sm); height: 6px; overflow: hidden;">
+                    <div
+                        style="background: {{ category.color }}; height: 100%; width: {{ category.percentage }}%; transition: width 0.5s ease;">
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="glass-card">
+        <h2 style="margin-bottom: var(--spacing-lg);">📋 Recent Transactions</h2>
+        <div style="overflow-x: auto;">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Description</th>
+                        <th>Amount</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for expense, category in recent_expenses %}
+                    <tr>
+                        <td>{{ expense.date.strftime('%b %d, %Y') }}</td>
+                        <td>
+                            <span style="font-size: 1.25rem;">{{ category.icon }}</span>
+                            {{ category.name }}
+                        </td>
+                        <td>{{ expense.description or '-' }}</td>
+                        <td style="font-weight: 600;">₹{{ "%.2f"|format(expense.amount) }}</td>
+                        <td>
+                            <button onclick="deleteExpense({{ expense.id }})" class="btn btn-outline"
+                                style="padding: var(--spacing-xs) var(--spacing-sm); font-size: 0.875rem;">Delete</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div style="text-align: center; margin-top: var(--spacing-lg);">
+            <a href="/expenses" class="btn btn-outline">View All Expenses →</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Populate categories in quick add form
+    document.addEventListener('DOMContentLoaded', function () {
+        const categories = {{ top_categories| tojson
+    }};
+    const select = document.getElementById('quickCategory');
+
+    fetch('/api/expenses')
+        .then(response => response.json())
+        .then(data => {
+            const uniqueCategories = [...new Set(data.map(e => e.category))];
+            uniqueCategories.forEach(cat => {
+                const option = document.createElement('option');
+                option.textContent = cat;
+                select.appendChild(option);
+            });
+        });
+});
+
+    // Quick expense form
+    document.getElementById('quickExpenseForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const formData = {
+            amount: document.getElementById('quickAmount').value,
+            category_id: parseInt(document.getElementById('quickCategory').selectedIndex),
+            description: document.getElementById('quickDescription').value,
+            date: new Date().toISOString().split('T')[0]
+        };
+
+        try {
+            const response = await fetch('/api/expenses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Expense added successfully!');
+                location.reload();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to add expense');
+        }
+    });
+
+    function deleteExpense(id) {
+        if (confirm('Are you sure you want to delete this expense?')) {
+            fetch(`/api/expenses?id=${id}`, { method: 'DELETE' })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        location.reload();
+                    } else {
+                        alert('Failed to delete expense');
+                    }
+                });
+        }
+    }
+</script>
+{% endblock %}

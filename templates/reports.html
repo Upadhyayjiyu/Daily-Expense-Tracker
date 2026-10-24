@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Daily Expense Tracker{% endblock %}
+
+{% block content %}
+<div class="fade-in-up">
+    <h1 style="font-size: 2.5rem; margin-bottom: var(--spacing-xl);">📄 Export Reports</h1>
+
+    <p style="color: var(--text-secondary); margin-bottom: var(--spacing-2xl); font-size: 1.125rem;">
+        Generate and download detailed expense reports in CSV or Excel format.
+    </p>
+
+    <!-- Export Configuration -->
+    <div class="glass-card">
+        <h3 style="margin-bottom: var(--spacing-lg);">⚙️ Configure Export</h3>
+
+        <form id="exportForm">
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" id="exportStartDate" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">End Date</label>
+                    <input type="date" id="exportEndDate" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category (Optional)</label>
+                    <select id="exportCategory" class="form-control form-select">
+                        <option value="">All Categories</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}">{{ category.icon }} {{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Format</label>
+                    <select id="exportFormat" class="form-control form-select">
+                        <option value="csv">CSV (Comma Separated)</option>
+                        <option value="excel">Excel (XLSX)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-top: var(--spacing-xl); display: flex; gap: var(--spacing-md);">
+                <button type="button" onclick="exportData()" class="btn btn-primary">📥 Export Report</button>
+                <button type="button" onclick="setThisMonth()" class="btn btn-outline">This Month</button>
+                <button type="button" onclick="setLastMonth()" class="btn btn-outline">Last Month</button>
+                <button type="button" onclick="setThisYear()" class="btn btn-outline">This Year</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Quick Report Templates -->
+    <div class="grid grid-3" style="margin-top: var(--spacing-2xl);">
+        <div class="glass-card" style="text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: var(--spacing-md);">📊</div>
+            <h4 style="margin-bottom: var(--spacing-sm);">Monthly Summary</h4>
+            <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">Current month expenses by
+                category</p>
+            <button onclick="exportMonthlyReport()" class="btn btn-primary">Download</button>
+        </div>
+
+        <div class="glass-card" style="text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: var(--spacing-md);">📈</div>
+            <h4 style="margin-bottom: var(--spacing-sm);">Quarterly Report</h4>
+            <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">Last 3 months overview</p>
+            <button onclick="exportQuarterlyReport()" class="btn btn-primary">Download</button>
+        </div>
+
+        <div class="glass-card" style="text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: var(--spacing-md);">📅</div>
+            <h4 style="margin-bottom: var(--spacing-sm);">Annual Report</h4>
+            <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">This year's complete data</p>
+            <button onclick="exportAnnualReport()" class="btn btn-primary">Download</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Set default dates (current month)
+    function setThisMonth() {
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        document.getElementById('exportStartDate').valueAsDate = firstDay;
+        document.getElementById('exportEndDate').valueAsDate = lastDay;
+    }
+
+    function setLastMonth() {
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+
+        document.getElementById('exportStartDate').valueAsDate = firstDay;
+        document.getElementById('exportEndDate').valueAsDate = lastDay;
+    }
+
+    function setThisYear() {
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), 0, 1);
+        const lastDay = new Date(now.getFullYear(), 11, 31);
+
+        document.getElementById('exportStartDate').valueAsDate = firstDay;
+        document.getElementById('exportEndDate').valueAsDate = lastDay;
+    }
+
+    // Initialize with current month
+    setThisMonth();
+
+    function exportData() {
+        const startDate = document.getElementById('exportStartDate').value;
+        const endDate = document.getElementById('exportEndDate').value;
+        const categoryId = document.getElementById('exportCategory').value;
+        const format = document.getElementById('exportFormat').value;
+
+        if (!startDate || !endDate) {
+            alert('Please select both start and end dates');
+            return;
+        }
+
+        let url = `/api/export/${format}?`;
+        if (startDate) url += `start_date=${startDate}&`;
+        if (endDate) url += `end_date=${endDate}&`;
+        if (categoryId) url += `category_id=${categoryId}&`;
+
+        window.location.href = url;
+    }
+
+    function exportMonthlyReport() {
+        setThisMonth();
+        document.getElementById('exportFormat').value = 'excel';
+        setTimeout(exportData, 100);
+    }
+
+    function exportQuarterlyReport() {
+        const now = new Date();
+        const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+
+        document.getElementById('exportStartDate').valueAsDate = threeMonthsAgo;
+        document.getElementById('exportEndDate').valueAsDate = now;
+        document.getElementById('exportFormat').value = 'excel';
+
+        setTimeout(exportData, 100);
+    }
+
+    function exportAnnualReport() {
+        setThisYear();
+        document.getElementById('exportFormat').value = 'excel';
+        setTimeout(exportData, 100);
+    }
+</script>
+{% endblock %}

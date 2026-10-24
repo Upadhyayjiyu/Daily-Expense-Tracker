@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Users - Daily Expense Tracker{% endblock %}
+
+{% block content %}
+<div class="fade-in-up">
+    <h1 style="font-size: 2.5rem; margin-bottom: var(--spacing-xl);">👥 Multi-User Management</h1>
+
+    <p style="color: var(--text-secondary); margin-bottom: var(--spacing-2xl); font-size: 1.125rem;">
+        View and compare expenses across all family members.
+    </p>
+
+    <!-- User Cards -->
+    <div class="grid grid-3" style="margin-bottom: var(--spacing-2xl);">
+        {% for item in user_expenses %}
+        <div class="glass-card">
+            <div style="text-align: center;">
+                <div style="font-size: 4rem; margin-bottom: var(--spacing-md);">👤</div>
+                <h3 style="margin-bottom: var(--spacing-sm);">{{ item.user.username }}</h3>
+                <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">{{ item.user.email }}</p>
+
+                <div
+                    style="background: var(--glass-bg); padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-md);">
+                    <div style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: var(--spacing-xs);">
+                        Monthly Salary</div>
+                    <div style="font-size: 1.5rem; font-weight: 600;">₹{{ "%.2f"|format(item.user.salary) }}</div>
+                </div>
+
+                <div
+                    style="background: var(--glass-bg); padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-md);">
+                    <div style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: var(--spacing-xs);">
+                        This Month Expenses</div>
+                    <div style="font-size: 1.5rem; font-weight: 600; color: var(--accent-color);">₹{{
+                        "%.2f"|format(item.expenses) }}</div>
+                </div>
+
+                <div style="background: var(--glass-bg); padding: var(--spacing-md); border-radius: var(--radius-md);">
+                    <div style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: var(--spacing-xs);">
+                        Savings</div>
+                    <div
+                        style="font-size: 1.5rem; font-weight: 600; {% if item.savings >= 0 %}color: var(--success-color);{% else %}color: var(--accent-color);{% endif %}">
+                        ₹{{ "%.2f"|format(item.savings) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Combined Household Stats -->
+    <div class="glass-card">
+        <h3 style="margin-bottom: var(--spacing-lg);">🏠 Combined Household Statistics</h3>
+
+        <div class="grid grid-3" style="margin-bottom: var(--spacing-xl);">
+            <div class="summary-card">
+                <div class="summary-card-icon">💰</div>
+                <div class="summary-card-title">Total Household Income</div>
+                <div class="summary-card-value">
+                    ₹{{ "%.2f"|format(user_expenses|sum(attribute='user.salary')) }}
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-card-icon">💸</div>
+                <div class="summary-card-title">Total Household Expenses</div>
+                <div class="summary-card-value"
+                    style="background: var(--secondary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    ₹{{ "%.2f"|format(user_expenses|sum(attribute='expenses')) }}
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-card-icon">📊</div>
+                <div class="summary-card-title">Total Household Savings</div>
+                <div class="summary-card-value"
+                    style="background: var(--success-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    ₹{{ "%.2f"|format(user_expenses|sum(attribute='savings')) }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Individual Contribution Chart -->
+        <h4 style="margin-bottom: var(--spacing-lg);">Individual Expense Contributions</h4>
+        <div class="chart-container">
+            <canvas id="userContributionChart"></canvas>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const userExpenses = {{ user_expenses| tojson }};
+
+    // User Contribution Chart
+    new Chart(document.getElementById('userContributionChart'), {
+        type: 'bar',
+        data: {
+            labels: userExpenses.map(u => u.user.username),
+            datasets: [
+                {
+                    label: 'Salary',
+                    data: userExpenses.map(u => u.user.salary),
+                    backgroundColor: 'rgba(76, 201, 240, 0.6)',
+                    borderColor: '#4cc9f0',
+                    borderWidth: 2,
+                    borderRadius: 6
+                },
+                {
+                    label: 'Expenses',
+                    data: userExpenses.map(u => u.expenses),
+                    backgroundColor: 'rgba(245, 87, 108, 0.6)',
+                    borderColor: '#f5576c',
+                    borderWidth: 2,
+                    borderRadius: 6
+                },
+                {
+                    label: 'Savings',
+                    data: userExpenses.map(u => Math.max(0, u.savings)),
+                    backgroundColor: 'rgba(0, 242, 254, 0.6)',
+                    borderColor: '#00f2fe',
+                    borderWidth: 2,
+                    borderRadius: 6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (value) => '₹' + value
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

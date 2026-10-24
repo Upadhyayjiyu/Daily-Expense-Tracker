@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Household Expenses - Daily Expense Tracker{% endblock %}
+
+{% block content %}
+<div class="fade-in-up">
+    <h1 style="font-size: 2.5rem; margin-bottom: var(--spacing-xl);">🏠 Household Expenses</h1>
+
+    <p style="color: var(--text-secondary); margin-bottom: var(--spacing-2xl); font-size: 1.125rem;">
+        Track essential household bills like rent, utilities, groceries, and analyze month-to-month trends.
+    </p>
+
+    <!-- Current Month Essential Bills -->
+    <div class="glass-card" style="margin-bottom: var(--spacing-2xl);">
+        <h3 style="margin-bottom: var(--spacing-lg);">💡 Current Month Essential Bills</h3>
+        <div class="grid grid-2">
+            {% for expense in household_expenses %}
+            <div style="padding: var(--spacing-lg); background: var(--glass-bg); border-radius: var(--radius-md);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="font-size: 2rem;">{{ expense.icon }}</span>
+                        <h4 style="display: inline; margin-left: var(--spacing-sm);">{{ expense.name }}</h4>
+                    </div>
+                    <div style="font-size: 1.5rem; font-weight: 600;">₹{{ "%.2f"|format(expense.total) }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Month-to-Month Comparison -->
+    <div class="glass-card" style="margin-bottom: var(--spacing-2xl);">
+        <h3 style="margin-bottom: var(--spacing-lg);">📈 Month-to-Month Household Trends</h3>
+        <div class="chart-container" style="height: 500px;">
+            <canvas id="householdTrendChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Multi-User Comparison -->
+    <div class="glass-card">
+        <h3 style="margin-bottom: var(--spacing-lg);">👥 User Spending Comparison</h3>
+        <div class="chart-container">
+            <canvas id="userComparisonChart"></canvas>
+        </div>
+
+        <div class="grid grid-3" style="margin-top: var(--spacing-xl);">
+            {% for user_expense in all_users %}
+            <div class="summary-card">
+                <div class="summary-card-icon">👤</div>
+                <div class="summary-card-title">{{ user_expense.username }}</div>
+                <div class="summary-card-value">₹{{ "%.2f"|format(user_expense.total) }}</div>
+                <div class="summary-card-subtitle">Total expenses</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const monthlyHousehold = {{ monthly_household| safe }};
+    const allUsers = {{ all_users| tojson }};
+
+    // Household Trend Chart
+    const householdLabels = monthlyHousehold.map(m => m.month);
+    const householdTotals = monthlyHousehold.map(m => m.total);
+
+    new Chart(document.getElementById('householdTrendChart'), {
+        type: 'line',
+        data: {
+            labels: householdLabels,
+            datasets: [{
+                label: 'Household Expenses',
+                data: householdTotals,
+                borderColor: '#6BCB77',
+                backgroundColor: 'rgba(107, 203, 119, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 6,
+                pointHoverRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => 'Total: ₹' + context.parsed.y.toFixed(2)
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (value) => '₹' + value
+                    }
+                }
+            }
+        }
+    });
+
+    // User Comparison Chart
+    new Chart(document.getElementById('userComparisonChart'), {
+        type: 'doughnut',
+        data: {
+            labels: allUsers.map(u => u.username),
+            datasets: [{
+                data: allUsers.map(u => u.total),
+                backgroundColor: [
+                    'rgba(102, 126, 234, 0.7)',
+                    'rgba(118, 75, 162, 0.7)',
+                    'rgba(245, 87, 108, 0.7)',
+                    'rgba(76, 201, 240, 0.7)',
+                    'rgba(254, 225, 64, 0.7)'
+                ],
+                borderWidth: 2,
+                borderColor: '#1a1a2e'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        font: { size: 14 }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.parsed / total) * 100).toFixed(1);
+                            return context.label + ': ₹' + context.parsed.toFixed(2) + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
